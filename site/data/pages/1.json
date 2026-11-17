@@ -1,0 +1,21 @@
+{
+  "posts": [
+    {
+      "date": "17.11.2026",
+      "description": "Indie game development has become more accessible than ever before due to advancements in technology and the rise of affordable game engines.",
+      "id": "starting-game-dev-journey",
+      "title": "Starting My Game Dev Journey",
+      "cover": "left",
+      "tags": [
+        "GameDev",
+        "Godot",
+        "Game Engine",
+        "Unity",
+        "MonoGame",
+        "Unreal Engine"
+      ]
+    }
+  ],
+  "current": 1,
+  "total": 1
+}
