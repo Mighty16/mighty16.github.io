@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSON Validator & Query Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+      
+      :root {
+        --font-sans: 'Inter', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: #f8fafc;
+        color: #1e293b;
+      }
+
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      .glass {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      textarea::placeholder {
+        color: #94a3b8;
+      }
+
+      /* Collapsible Styles */
+      .json-item .json-node {
+        margin-left: 1.5rem;
+        border-left: 1px solid #e2e8f0;
+        padding-left: 0.5rem;
+      }
+      .json-toggle {
+        cursor: pointer;
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: #6366f1;
+        font-weight: 600;
+      }
+      .json-toggle:hover {
+        color: #4f46e5;
+      }
+      .json-toggle::before {
+        content: '▼';
+        font-size: 0.7rem;
+        transition: transform 0.2s;
+      }
+      .json-item.collapsed > .json-line .json-toggle::before {
+        transform: rotate(-90deg);
+      }
+      .json-collapsed-info {
+        display: none;
+        color: #94a3b8;
+        font-style: italic;
+        font-size: 0.75rem;
+      }
+      .json-item.collapsed > .json-node,
+      .json-item.collapsed > .json-close {
+        display: none;
+      }
+      .json-item.collapsed > .json-line .json-collapsed-info {
+        display: inline;
+      }
+      .json-key {
+        color: #be185d;
+      }
+      .json-string {
+        color: #059669;
+      }
+      .json-number {
+        color: #d97706;
+      }
+      .json-boolean {
+        color: #2563eb;
+      }
+      .json-null {
+        color: #64748b;
+      }
+      .search-highlight {
+        background-color: #fef08a;
+        border-radius: 2px;
+        padding: 0 2px;
+        font-weight: bold;
+        color: #000;
+      }
+      .path-highlight {
+        background-color: #e0e7ff;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen p-4 md:p-8">
+    <div class="max-w-4xl mx-auto space-y-8">
+      <!-- Header -->
+      <header class="text-center space-y-2">
+        <h1 class="text-4xl font-bold tracking-tight text-slate-900">JSON <span class="text-indigo-600">Query</span></h1>
+        <p class="text-slate-500">Validate, extract, search data from your JSON.</p>
+      </header>
+
+      <!-- Main Content -->
+      <div class="grid gap-8">
+        <!-- Input Section -->
+        <section class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex gap-4 items-center">
+              <label class="text-sm font-semibold uppercase tracking-wider text-slate-500">JSON Input</label>
+              <div id="input-mode-toggle" class="flex bg-slate-100 p-1 rounded-lg text-[10px] font-bold uppercase">
+                <button id="btn-edit" class="px-3 py-1 rounded-md bg-white shadow-sm text-indigo-600 transition-all">Edit</button>
+                <button id="btn-view" class="px-3 py-1 rounded-md text-slate-500 transition-all">Explore</button>
+              </div>
+            </div>
+            <div id="status-badge" class="hidden px-2 py-1 rounded text-xs font-medium"></div>
+          </div>
+          
+          <div id="editor-view" class="relative group">
+            <textarea 
+              id="json-input" 
+              class="w-full h-64 p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none mono text-sm shadow-sm resize-none bg-white"
+              placeholder='{ "example": { "data": "Hello World" } }'
+            ></textarea>
+          </div>
+
+          <div id="tree-view" class="hidden w-full h-64 p-4 rounded-2xl border border-slate-200 bg-white overflow-auto mono text-sm shadow-sm">
+            <!-- Tree rendered here -->
+          </div>
+
+          <div id="json-stats" class="hidden text-[10px] text-slate-400 mt-2 font-mono uppercase tracking-wider px-2">
+            <!-- Stats rendered here -->
+          </div>
+
+          <div id="error-display" class="hidden p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm mono whitespace-pre-wrap"></div>
+        </section>
+
+        <!-- Query Section -->
+        <section id="query-section" class="space-y-4 opacity-50 pointer-events-none transition-opacity duration-300">
+          <div class="flex items-center justify-between">
+            <label for="query-input" class="text-sm font-semibold uppercase tracking-wider text-slate-500">Query Path or Search</label>
+            <span class="text-[10px] text-slate-400 uppercase tracking-tighter">Path: key:subkey | Search: any text</span>
+          </div>
+          <div class="flex gap-2">
+            <input 
+              type="text" 
+              id="query-input" 
+              class="flex-1 p-4 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none mono text-sm shadow-sm bg-white"
+              placeholder="object:field or search text"
+            >
+          </div>
+          
+          <div class="space-y-2">
+            <label class="text-sm font-semibold uppercase tracking-wider text-slate-500">Result</label>
+            <div 
+              id="result-display" 
+              class="w-full min-h-[100px] p-4 rounded-xl border border-slate-200 bg-slate-50 mono text-sm overflow-auto"
+            >
+              <span class="text-slate-400 italic">Enter a query to see the result...</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Footer -->
+      <footer class="text-center text-slate-400 text-xs pt-8">
+        <p>Format: <code>key1:key2</code> for paths. Non-key text triggers a deep search in values.</p>
+      </footer>
+    </div>
+
+    <script>
+      const jsonInput = document.getElementById('json-input');
+      const errorDisplay = document.getElementById('error-display');
+      const statusBadge = document.getElementById('status-badge');
+      const querySection = document.getElementById('query-section');
+      const queryInput = document.getElementById('query-input');
+      const resultDisplay = document.getElementById('result-display');
+      
+      const btnEdit = document.getElementById('btn-edit');
+      const btnView = document.getElementById('btn-view');
+      const editorView = document.getElementById('editor-view');
+      const treeView = document.getElementById('tree-view');
+      const jsonStats = document.getElementById('json-stats');
+
+      let parsedData = null;
+      let currentMode = 'edit'; // 'edit' or 'view'
+
+      function setMode(mode) {
+        currentMode = mode;
+        if (mode === 'edit') {
+          btnEdit.classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
+          btnEdit.classList.remove('text-slate-500');
+          btnView.classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
+          btnView.classList.add('text-slate-500');
+          editorView.classList.remove('hidden');
+          treeView.classList.add('hidden');
+          jsonStats.classList.add('hidden');
+        } else {
+          btnView.classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
+          btnView.classList.remove('text-slate-500');
+          btnEdit.classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
+          btnEdit.classList.add('text-slate-500');
+          editorView.classList.add('hidden');
+          treeView.classList.remove('hidden');
+          jsonStats.classList.remove('hidden');
+          refreshTreeView();
+        }
+      }
+
+      btnEdit.onclick = () => setMode('edit');
+      btnView.onclick = () => {
+        if (parsedData) setMode('view');
+      };
+
+      function updateStatus(isValid, message = '') {
+        statusBadge.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700');
+        
+        if (isValid) {
+          statusBadge.textContent = 'Valid JSON';
+          statusBadge.classList.add('bg-green-100', 'text-green-700');
+          errorDisplay.classList.add('hidden');
+          querySection.classList.remove('opacity-50', 'pointer-events-none');
+          btnView.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+          statusBadge.textContent = 'Invalid JSON';
+          statusBadge.classList.add('bg-red-100', 'text-red-700');
+          if (message) {
+            errorDisplay.textContent = message;
+            errorDisplay.classList.remove('hidden');
+          }
+          querySection.classList.add('opacity-50', 'pointer-events-none');
+          btnView.classList.add('opacity-50', 'cursor-not-allowed');
+          resultDisplay.innerHTML = '<span class="text-slate-400 italic">Enter a query to see the result...</span>';
+          if (currentMode === 'view') setMode('edit');
+        }
+        statusBadge.classList.remove('hidden');
+      }
+
+      function handleInput() {
+        const value = jsonInput.value.trim();
+        if (!value) {
+          statusBadge.classList.add('hidden');
+          errorDisplay.classList.add('hidden');
+          querySection.classList.add('opacity-50', 'pointer-events-none');
+          parsedData = null;
+          return;
+        }
+
+        try {
+          parsedData = JSON.parse(value);
+          updateStatus(true);
+          handleQuery();
+          if (currentMode === 'view') refreshTreeView();
+        } catch (e) {
+          parsedData = null;
+          updateStatus(false, e.message);
+        }
+      }
+
+      function refreshTreeView() {
+        if (!parsedData) return;
+        treeView.innerHTML = '';
+        const query = queryInput.value.trim();
+        treeView.appendChild(renderJson(parsedData, query));
+        
+        // Calculate stats
+        const compactJson = JSON.stringify(parsedData);
+        const charCount = compactJson.length;
+        const byteSize = new TextEncoder().encode(compactJson).length;
+        
+        let sizeStr = '';
+        if (byteSize < 1024) {
+          sizeStr = `${byteSize} bytes`;
+        } else if (byteSize < 1024 * 1024) {
+          sizeStr = `~${(byteSize / 1024).toFixed(2)} kilobytes`;
+        } else {
+          sizeStr = `~${(byteSize / (1024 * 1024)).toFixed(2)} megabytes`;
+        }
+        
+        jsonStats.textContent = `Json has ${charCount} characters, size: ${sizeStr} in UTF-8`;
+      }
+
+      function renderJson(data, searchTerm = '') {
+        const container = document.createElement('div');
+        container.className = 'json-tree';
+
+        function createNode(val, key = null) {
+          const node = document.createElement('div');
+          node.className = 'json-item mb-1';
+
+          const line = document.createElement('div');
+          line.className = 'json-line flex items-baseline flex-wrap gap-x-2';
+
+          let keyMatched = false;
+          if (key !== null) {
+            const keySpan = document.createElement('span');
+            keySpan.className = 'json-key font-semibold';
+            
+            if (searchTerm && key.toLowerCase().includes(searchTerm.toLowerCase())) {
+              const regex = new RegExp(`(${searchTerm})`, 'gi');
+              keySpan.innerHTML = `"${key.replace(regex, '<span class="search-highlight">$1</span>')}": `;
+              keyMatched = true;
+              node.dataset.hasMatch = 'true';
+            } else {
+              keySpan.textContent = `"${key}": `;
+            }
+            line.appendChild(keySpan);
+          }
+
+          if (val === null) {
+            const span = document.createElement('span');
+            span.className = 'json-null';
+            span.textContent = 'null';
+            line.appendChild(span);
+          } else if (typeof val === 'object') {
+            const isArray = Array.isArray(val);
+            const openChar = isArray ? '[' : '{';
+            const closeChar = isArray ? ']' : '}';
+            const itemCount = isArray ? val.length : Object.keys(val).length;
+
+            const toggle = document.createElement('span');
+            toggle.className = 'json-toggle';
+            toggle.textContent = openChar;
+            toggle.onclick = (e) => {
+              e.stopPropagation();
+              node.classList.toggle('collapsed');
+            };
+
+            const info = document.createElement('span');
+            info.className = 'json-collapsed-info';
+            info.textContent = ` ... ${closeChar} (${itemCount} items)`;
+
+            const children = document.createElement('div');
+            children.className = 'json-node';
+
+            let hasMatchInChild = false;
+            if (isArray) {
+              val.forEach((item, i) => {
+                const childNode = createNode(item);
+                if (childNode.dataset.hasMatch === 'true') hasMatchInChild = true;
+                children.appendChild(childNode);
+              });
+            } else {
+              Object.entries(val).forEach(([k, v]) => {
+                const childNode = createNode(v, k);
+                if (childNode.dataset.hasMatch === 'true') hasMatchInChild = true;
+                children.appendChild(childNode);
+              });
+            }
+
+            const closeSpan = document.createElement('div');
+            closeSpan.className = 'json-close ml-[-0.5rem]';
+            closeSpan.textContent = closeChar;
+
+            line.appendChild(toggle);
+            line.appendChild(info);
+            node.appendChild(line);
+            node.appendChild(children);
+            node.appendChild(closeSpan);
+
+            if (hasMatchInChild || keyMatched) node.dataset.hasMatch = 'true';
+          } else {
+            const span = document.createElement('span');
+            const type = typeof val;
+            span.className = `json-${type}`;
+            
+            let displayVal = type === 'string' ? `"${val}"` : String(val);
+            
+            if (searchTerm && displayVal.toLowerCase().includes(searchTerm.toLowerCase())) {
+              const regex = new RegExp(`(${searchTerm})`, 'gi');
+              span.innerHTML = displayVal.replace(regex, '<span class="search-highlight">$1</span>');
+              node.dataset.hasMatch = 'true';
+            } else {
+              span.textContent = displayVal;
+            }
+            
+            line.appendChild(span);
+            node.appendChild(line);
+          }
+
+          return node;
+        }
+
+        container.appendChild(createNode(data));
+        return container;
+      }
+
+      function deepSearch(obj, term) {
+        const keyMatches = [];
+        const valueMatches = [];
+        const termLower = term.toLowerCase();
+
+        function traverse(curr, path = []) {
+          if (curr === null) return;
+          
+          if (typeof curr === 'object') {
+            if (Array.isArray(curr)) {
+              curr.forEach((item, i) => traverse(item, [...path, i]));
+            } else {
+              Object.entries(curr).forEach(([k, v]) => {
+                if (k.toLowerCase().includes(termLower)) {
+                  keyMatches.push({ path: [...path, k].join(':'), key: k });
+                }
+                traverse(v, [...path, k]);
+              });
+            }
+          } else {
+            if (String(curr).toLowerCase().includes(termLower)) {
+              valueMatches.push({ path: path.join(':'), value: curr });
+            }
+          }
+        }
+
+        traverse(obj);
+        return { keyMatches, valueMatches };
+      }
+
+      function handleQuery() {
+        if (!parsedData) return;
+
+        const query = queryInput.value.trim();
+        
+        // Always refresh tree view to show highlights in "original JSON"
+        if (currentMode === 'view') refreshTreeView();
+
+        if (!query) {
+          resultDisplay.innerHTML = '<span class="text-slate-400 italic">Enter a query to see the result...</span>';
+          return;
+        }
+
+        resultDisplay.innerHTML = '';
+
+        // Check for count(path) or type(path)
+        const countMatch = query.match(/^count\((.*)\)$/i);
+        const typeMatch = query.match(/^type\((.*)\)$/i);
+
+        if (countMatch || typeMatch) {
+          const path = (countMatch ? countMatch[1] : typeMatch[1]).trim();
+          const parts = path.split(':');
+          let current = parsedData;
+          let found = true;
+
+          for (const part of parts) {
+            if (part === '') continue;
+            if (current && typeof current === 'object' && part in current) {
+              current = current[part];
+            } else {
+              found = false;
+              break;
+            }
+          }
+
+          if (!found) {
+            resultDisplay.innerHTML = `<span class="text-red-400 italic">Path "${path}" not found</span>`;
+            return;
+          }
+
+          if (countMatch) {
+            if (Array.isArray(current)) {
+              resultDisplay.innerHTML = `<div class="p-4 bg-indigo-50 text-indigo-700 rounded-lg font-medium border border-indigo-100">${path} has ${current.length} items</div>`;
+            } else {
+              resultDisplay.innerHTML = `<span class="text-red-400 italic">Value at "${path}" is not a list</span>`;
+            }
+          } else {
+            let typeStr = '';
+            if (current === null) typeStr = 'null';
+            else if (Array.isArray(current)) typeStr = 'list';
+            else if (typeof current === 'string') typeStr = 'string';
+            else if (typeof current === 'number') {
+              typeStr = Number.isInteger(current) ? 'int' : 'double';
+            } else if (typeof current === 'object') typeStr = 'object';
+            else typeStr = typeof current;
+
+            resultDisplay.innerHTML = `<div class="p-4 bg-indigo-50 text-indigo-700 rounded-lg font-medium border border-indigo-100">Type of ${path} is ${typeStr}</div>`;
+          }
+          return;
+        }
+
+        // Try path lookup first
+        const parts = query.split(':');
+        let current = parsedData;
+        let foundPath = true;
+
+        for (const part of parts) {
+          if (part === '') continue;
+          if (current && typeof current === 'object' && part in current) {
+            current = current[part];
+          } else {
+            foundPath = false;
+            break;
+          }
+        }
+
+        if (foundPath) {
+          resultDisplay.appendChild(renderJson(current));
+        } else {
+          // Fallback to deep search
+          const { keyMatches, valueMatches } = deepSearch(parsedData, query);
+          
+          if (keyMatches.length === 0 && valueMatches.length === 0) {
+            resultDisplay.innerHTML = '<span class="text-red-400 italic">No path, key, or value matches found</span>';
+            return;
+          }
+
+          const renderGroup = (title, matches, isKeyMatch) => {
+            if (matches.length === 0) return;
+            
+            const header = document.createElement('div');
+            header.className = 'text-indigo-600 font-semibold mb-4 text-xs uppercase tracking-widest mt-6 first:mt-0';
+            header.textContent = `${title} (${matches.length}):`;
+            resultDisplay.appendChild(header);
+
+            const list = document.createElement('div');
+            list.className = 'space-y-4';
+            matches.forEach(res => {
+              const item = document.createElement('div');
+              item.className = 'p-3 bg-white rounded-lg border border-slate-200 shadow-sm cursor-pointer hover:border-indigo-300 transition-colors';
+              item.onclick = () => {
+                queryInput.value = res.path;
+                handleQuery();
+              };
+              
+              const pathDiv = document.createElement('div');
+              pathDiv.className = 'text-[10px] text-slate-400 mb-1 font-mono';
+              pathDiv.textContent = `PATH: ${res.path}`;
+              
+              const valDiv = document.createElement('div');
+              valDiv.className = 'text-sm break-all';
+              
+              const displayVal = isKeyMatch ? res.key : (typeof res.value === 'string' ? `"${res.value}"` : String(res.value));
+              const regex = new RegExp(`(${query})`, 'gi');
+              valDiv.innerHTML = displayVal.replace(regex, '<span class="search-highlight">$1</span>');
+              
+              item.appendChild(pathDiv);
+              item.appendChild(valDiv);
+              list.appendChild(item);
+            });
+            resultDisplay.appendChild(list);
+          };
+
+          renderGroup('Found Keys', keyMatches, true);
+          renderGroup('Found Values', valueMatches, false);
+        }
+      }
+
+      jsonInput.addEventListener('input', handleInput);
+      queryInput.addEventListener('input', handleQuery);
+
+      handleInput();
+    </script>
+  </body>
+</html>
+
