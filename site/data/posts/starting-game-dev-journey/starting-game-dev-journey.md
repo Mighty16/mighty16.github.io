@@ -14,7 +14,7 @@ In game development, you have to be creative. You have to come up with ideas for
 But game development also teaches you about building your own product. You have to take an idea and turn it into something tangible, something that people can interact with and enjoy. This involves learning about programming, graphic design, and project management. It’s not always easy, but it’s incredibly rewarding to see your vision come to life.
 
 Indie game development is a great way for engineers to express their creativity and make something unique. It’s a process that requires a lot of hard work, dedication, and passion.
-### Game as a software
+### Game as a software product
 
 When starting your game dev journey, it’s easy to focus entirely on the 'game' aspect—the art, the story, and the fun mechanics. However, it is vital to remember that a game is, at its core, complex software. To prevent your project from collapsing under its own weight as it grows, you should prioritize standard software engineering principles:
 
@@ -56,8 +56,8 @@ After researching available options, I was able to shortlist and filter them bas
 | ------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Unity         | https://unity.com/            | - ❌ Huge download size<br>- ❌ Requires account, licensing<br>- ✅ Industry standard<br>- ✅ C# Support |
 | Unreal Engine | https://www.unrealengine.com/ | - ❌ Requires account and licensing<br>- ❌ Royalties<br>- ✅ Industry standard                         |
-| Godot         | https://godotengine.org/      | - ✅❌ Web export support *<br>- ❌ Security issues<br>- ✅ Free and open source<br>- ✅ C# Support        |
-| Stride Engine | https://www.stride3d.net/     | - ❌ Windows IDE only<br> - ❌ No web export                                                                  |
+| Godot         | https://godotengine.org/      | - ✅❌ Web export support *<br>- ❌ Security issues<br>- ✅ Free and open source<br>- ✅ C# Support       |
+| Stride Engine | https://www.stride3d.net/     | - ❌ Windows IDE only<br> - ❌ No web export                                                           |
 | Prowl         | https://prowl.dev/            | - ❌ Desktop only targets                                                                             |
 | Construct 3   | https://www.construct.net/    | - ❌ Paid (free version is limited)                                                                   |
 | LittleKt      | https://littlekt.com/         | - ❌ No visual editor, no IDE<br>- ❌ No iOS support yet<br>- ✅ Kotlin<br>- ✅ Free and open source     |
